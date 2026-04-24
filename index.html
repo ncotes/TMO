@@ -69,7 +69,7 @@
         };
 
         const DAY_COLORS = { 'HAB': '#2A4B54', 'SAB': '#9BB7D4', 'DOM': '#3D5A80' };
-        const INDICATOR_COLORS = { ali: '#279A55', troncal: '#2A4B54', articulado: '#2A4B54', padron: '#9BB7D4', buseton: '#A2E4B8', tpc: '#6B8EAD', general: '#3D5A80' };
+        const INDICATOR_COLORS = { ali: '#279A55', troncal: '#2A4B54', articulado: '#2A4B54', padron: '#9BB7D4', buseton: '#9BB7D4', tpc: '#8A7E9A', general: '#3D5A80' };
         const MONTHS_ORDER = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
         const parseCSVLine = (text, sep) => {
@@ -193,15 +193,19 @@
                             
                             if (isNaN(ano) || !MONTHS_ORDER.includes(mes)) continue;
 
+                            // LÓGICA DE AGRUPACIÓN DE DÍAS (HAB, GUACHERNA -> HAB / SAB -> SAB / DOM, FES, CARNAVAL -> DOM)
                             let tipDia = '';
-                            if (colIdx.tipoDia2 !== -1 && values[colIdx.tipoDia2]) {
-                                const val2 = values[colIdx.tipoDia2].toUpperCase().trim();
-                                if (val2 === 'H') tipDia = 'HAB';
-                                else if (val2 === 'S') tipDia = 'SAB';
-                                else if (val2 === 'D') tipDia = 'DOM';
-                            } else if (colIdx.tipDia !== -1 && values[colIdx.tipDia]) {
-                                tipDia = values[colIdx.tipDia].toUpperCase().trim();
-                                if (tipDia.includes('FES') || tipDia.includes('DOM')) tipDia = 'DOM';
+                            const rawTipoDia1 = colIdx.tipDia !== -1 && values[colIdx.tipDia] ? values[colIdx.tipDia].toUpperCase().trim() : '';
+                            const rawTipoDia2 = colIdx.tipoDia2 !== -1 && values[colIdx.tipoDia2] ? values[colIdx.tipoDia2].toUpperCase().trim() : '';
+                            const valRaw = rawTipoDia1 || rawTipoDia2;
+
+                            if (valRaw === 'S' || valRaw.includes('SAB')) {
+                                tipDia = 'SAB';
+                            } else if (valRaw === 'D' || valRaw.includes('DOM') || valRaw.includes('FES') || valRaw.includes('CARNAVAL')) {
+                                tipDia = 'DOM';
+                            } else {
+                                // Cualquier otro registro (HAB, GUACHERNA, H) se mapea a HAB
+                                tipDia = 'HAB';
                             }
 
                             const getNum = (idx) => {
@@ -512,11 +516,15 @@
                         const matches = rawData.filter(d => d.Año.toString() === y && d.mes === m && (selectedDayType === 'Todos' || d.Tip_dia === selectedDayType));
                         if (matches.length > 0) {
                             const avg = (key) => matches.reduce((acc, curr) => acc + curr[key], 0) / matches.length;
+                            
+                            const tpcMatches = matches.filter(d => d.Tip_dia !== 'DOM');
+                            const tpcAvg = tpcMatches.length > 0 ? tpcMatches.reduce((acc, curr) => acc + curr.punt_tpc, 0) / tpcMatches.length : null;
+
                             grouped.push({
                                 label: `${m.slice(0,3)} '${y.slice(-2)}`,
                                 sistur: Number(avg('punt_sis').toFixed(2)),
                                 metrocaribe: Number(avg('punt_met').toFixed(2)),
-                                tpc: Number(avg('punt_tpc').toFixed(2))
+                                tpc: tpcAvg !== null ? Number(tpcAvg.toFixed(2)) : null
                             });
                         }
                     });
@@ -621,7 +629,6 @@
                     <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
                         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-4">
-                                {/* Se modificó para buscar "logo.png" para evitar errores con espacios en entornos web */}
                                 {!logoError ? (
                                     <img 
                                         src="logo.png" 
@@ -786,7 +793,7 @@
                                                     <Legend />
                                                     <Bar dataKey="articulado" name="Articulado" fill="#2A4B54" radius={[4, 4, 0, 0]} barSize={15} />
                                                     <Bar dataKey="padron" name="Padrón" fill="#279A55" radius={[4, 4, 0, 0]} barSize={15} />
-                                                    <Bar dataKey="buseton" name="Busetón" fill="#FDF1B8" radius={[4, 4, 0, 0]} barSize={15} />
+                                                    <Bar dataKey="buseton" name="Busetón" fill="#9BB7D4" radius={[4, 4, 0, 0]} barSize={15} />
                                                     <Bar dataKey="tpc" name="TPC" fill="#8A7E9A" radius={[4, 4, 0, 0]} barSize={15} />
                                                 </ComposedChart>
                                             </ResponsiveContainer>
