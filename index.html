@@ -17,13 +17,12 @@
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #F1F5F9;}
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Usamos type="text/babel" y data-type="module" para soportar importaciones modernas (ESM) -->
     <script type="text/babel" data-type="module">
         import React, { useState, useMemo } from 'https://esm.sh/react@18.2.0';
         import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
@@ -49,18 +48,18 @@
         const Bot = (p) => <Icon {...p}><rect width="18" height="10" x="3" y="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" x2="8" y1="16" y2="16"/><line x1="16" x2="16" y1="16" y2="16"/></Icon>;
         const Loader2 = (p) => <Icon {...p} className={`animate-spin ${p.className || ''}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></Icon>;
         const BarChart2 = (p) => <Icon {...p}><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></Icon>;
+        const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
 
         // --- LÓGICA DE LA APLICACIÓN ---
         
-        // API KEY para Gemini (El entorno de ejecución inyectará la llave real automáticamente)
         const apiKey = ""; 
 
-        // Paleta corporativa (Énfasis en Blue Opal, Green Bee, Cerulean, Pantone 351 y Nimbus Cloud)
+        // Paleta corporativa
         const EXTENDED_PALETTE = [
-            '#2A4B54', '#279A55', '#9BB7D4', '#A2E4B8', '#3D5A80', 
-            '#D4D5D8', '#145C33', '#6B8EAD', '#496F5D', '#0891b2', 
-            '#059669', '#0284c7', '#A39C97', '#64748b', '#475569', 
-            '#38bdf8', '#596C68', '#88A08A', '#745943', '#94a3b8'
+            '#2A4B54', '#279A55', '#9BB7D4', '#8A7E9A', '#6D213C', '#FDF1B8',
+            '#3D5A80', '#D4D5D8', '#145C33', '#6B8EAD', '#496F5D', 
+            '#0891b2', '#059669', '#0284c7', '#A39C97', '#64748b', 
+            '#475569', '#38bdf8', '#596C68', '#88A08A', '#745943', '#94a3b8'
         ];
 
         const getYearColor = (year, idx) => {
@@ -104,6 +103,8 @@
             const [selectedDayType, setSelectedDayType] = useState('Todos');
             const [activeTab, setActiveTab] = useState('dashboard');
             const [showYearDropdown, setShowYearDropdown] = useState(false);
+            
+            const [logoError, setLogoError] = useState(false);
 
             const [aiInsight, setAiInsight] = useState('');
             const [isGeneratingAI, setIsGeneratingAI] = useState(false);
@@ -164,7 +165,14 @@
                             kms_ali: headers.findIndex(h => { const clean = h.replace(/[^A-Z0-9]/g, ''); return clean.includes('KMSEJECALI') || clean.includes('KMSALI') || clean.includes('ALITPC'); }),
                             kms_troncal: headers.findIndex(h => { const clean = h.replace(/[^A-Z0-9]/g, ''); return clean.includes('KMSEJECTRONCAL') || clean.includes('KMSTRONCAL'); }),
                             kms_prog: headers.findIndex(h => h.includes('KMS PROG') || h.includes('KMS_PROG')),
-                            flota: headers.findIndex(h => h.includes('FLOTA_EJEC') || h.includes('FLOTA EJEC'))
+                            flota: headers.findIndex(h => h.includes('FLOTA_EJEC') || h.includes('FLOTA EJEC')),
+                            cumpl_a: headers.findIndex(h => h.includes('CUMPLDESPACH_A')),
+                            cumpl_p: headers.findIndex(h => h.includes('CUMPLDESPACH_P')),
+                            cumpl_b: headers.findIndex(h => h.includes('CUMPLDESPACH_B')),
+                            cumpl_tpc: headers.findIndex(h => h.includes('CUMPLDESPACH_TPC')),
+                            punt_sis: headers.findIndex(h => h.includes('PUNTUALIDAD_SIS')),
+                            punt_met: headers.findIndex(h => h.includes('PUNTUALIDAD_MET')),
+                            punt_tpc: headers.findIndex(h => h.includes('PUNTUALIDAD_TPC'))
                         };
 
                         if (colIdx.ano === -1 || colIdx.mes === -1 || colIdx.validaciones === -1) {
@@ -208,7 +216,9 @@
                                 '%ALI': getNum(colIdx.ali), '%TRONCAL': getNum(colIdx.troncal),
                                 IPB_A: getNum(colIdx.ipb_a), IPB_P: getNum(colIdx.ipb_p), IPB_B: getNum(colIdx.ipb_b), IPB_TPC: getNum(colIdx.ipb_tpc), 'IPB SIST': getNum(colIdx.ipb_sist),
                                 IKB_A: getNum(colIdx.ikb_a), IKB_P: getNum(colIdx.ikb_p), IKB_B: getNum(colIdx.ikb_b), IKB_TPC: getNum(colIdx.ikb_tpc), 'IKB SIST': getNum(colIdx.ikb_sist),
-                                KMS_EJEC: getNum(colIdx.kms), KMS_ALI: getNum(colIdx.kms_ali), KMS_TRONCAL: getNum(colIdx.kms_troncal), KMS_PROG: getNum(colIdx.kms_prog), FLOTA_EJEC: getNum(colIdx.flota)
+                                KMS_EJEC: getNum(colIdx.kms), KMS_ALI: getNum(colIdx.kms_ali), KMS_TRONCAL: getNum(colIdx.kms_troncal), KMS_PROG: getNum(colIdx.kms_prog), FLOTA_EJEC: getNum(colIdx.flota),
+                                cumpl_a: getNum(colIdx.cumpl_a), cumpl_p: getNum(colIdx.cumpl_p), cumpl_b: getNum(colIdx.cumpl_b), cumpl_tpc: getNum(colIdx.cumpl_tpc),
+                                punt_sis: getNum(colIdx.punt_sis), punt_met: getNum(colIdx.punt_met), punt_tpc: getNum(colIdx.punt_tpc)
                             });
                         }
 
@@ -272,16 +282,18 @@
                         const habMatches = monthMatches.filter(d => d.Tip_dia === 'HAB');
 
                         if (monthMatches.length > 0) {
-                            const kmsAliTotal = monthMatches.reduce((acc, curr) => acc + curr.KMS_ALI, 0);
-                            const kmsTroncalTotal = monthMatches.reduce((acc, curr) => acc + curr.KMS_TRONCAL, 0);
+                            const kmsAliHab = habMatches.length > 0 ? habMatches.reduce((acc, curr) => acc + curr.KMS_ALI, 0) / habMatches.length : 0;
+                            const kmsTroncalHab = habMatches.length > 0 ? habMatches.reduce((acc, curr) => acc + curr.KMS_TRONCAL, 0) / habMatches.length : 0;
                             const demTroncalHab = habMatches.length > 0 ? habMatches.reduce((acc, curr) => acc + curr.Demanda_Troncal, 0) / habMatches.length : 0;
                             const demAliHab = habMatches.length > 0 ? habMatches.reduce((acc, curr) => acc + curr.Demanda_Ali, 0) / habMatches.length : 0;
 
-                            if (kmsAliTotal > 0 || kmsTroncalTotal > 0 || demTroncalHab > 0 || demAliHab > 0) {
+                            if (kmsAliHab > 0 || kmsTroncalHab > 0 || demTroncalHab > 0 || demAliHab > 0) {
                                 grouped.push({
                                     label: `${month.charAt(0).toUpperCase() + month.slice(1, 3)} '${year.slice(2)}`,
-                                    kmsAli: Math.round(kmsAliTotal), kmsTroncal: Math.round(kmsTroncalTotal),
-                                    demTroncal: Math.round(demTroncalHab), demAli: Math.round(demAliHab)
+                                    kmsAli: Math.round(kmsAliHab), 
+                                    kmsTroncal: Math.round(kmsTroncalHab),
+                                    demTroncal: Math.round(demTroncalHab), 
+                                    demAli: Math.round(demAliHab)
                                 });
                             }
                         }
@@ -295,7 +307,7 @@
                 const grouped = [];
                 [...selectedYears].sort().forEach(year => {
                     MONTHS_ORDER.forEach(month => {
-                        const matches = rawData.filter(d => d.Año.toString() === year && d.mes === month && d.Tip_dia === 'HAB');
+                        const matches = rawData.filter(d => d.Año.toString() === year && d.mes === month && (selectedDayType === 'Todos' || d.Tip_dia === selectedDayType));
                         if (matches.length > 0) {
                             const count = matches.length;
                             const avg = (key) => matches.reduce((acc, curr) => acc + curr[key], 0) / count;
@@ -312,7 +324,7 @@
                     });
                 });
                 return grouped;
-            }, [rawData, selectedYears, isLoaded]);
+            }, [rawData, selectedYears, selectedDayType, isLoaded]);
 
             const ofertaTrendData = useMemo(() => {
                 if (!isLoaded) return [];
@@ -467,6 +479,51 @@
                 return grouped;
             }, [rawData, selectedYears, isLoaded]);
 
+            const cumplimientoData = useMemo(() => {
+                if (!isLoaded) return [];
+                const grouped = [];
+                [...selectedYears].sort().forEach(y => {
+                    MONTHS_ORDER.forEach(m => {
+                        const matches = rawData.filter(d => d.Año.toString() === y && d.mes === m && (selectedDayType === 'Todos' || d.Tip_dia === selectedDayType));
+                        if (matches.length > 0) {
+                            const avg = (key) => matches.reduce((acc, curr) => acc + curr[key], 0) / matches.length;
+                            grouped.push({
+                                label: `${m.slice(0,3)} '${y.slice(-2)}`,
+                                articulado: Number(avg('cumpl_a').toFixed(2)),
+                                padron: Number(avg('cumpl_p').toFixed(2)),
+                                buseton: Number(avg('cumpl_b').toFixed(2)),
+                                tpc: Number(avg('cumpl_tpc').toFixed(2))
+                            });
+                        }
+                    });
+                });
+                return grouped;
+            }, [rawData, selectedYears, selectedDayType, isLoaded]);
+
+            const puntualidadData = useMemo(() => {
+                if (!isLoaded) return [];
+                const grouped = [];
+                [...selectedYears].sort().forEach(y => {
+                    MONTHS_ORDER.forEach(m => {
+                        const yearNum = parseInt(y, 10);
+                        const monthIdx = MONTHS_ORDER.indexOf(m);
+                        if (yearNum < 2025 || (yearNum === 2025 && monthIdx < 10)) return;
+
+                        const matches = rawData.filter(d => d.Año.toString() === y && d.mes === m && (selectedDayType === 'Todos' || d.Tip_dia === selectedDayType));
+                        if (matches.length > 0) {
+                            const avg = (key) => matches.reduce((acc, curr) => acc + curr[key], 0) / matches.length;
+                            grouped.push({
+                                label: `${m.slice(0,3)} '${y.slice(-2)}`,
+                                sistur: Number(avg('punt_sis').toFixed(2)),
+                                metrocaribe: Number(avg('punt_met').toFixed(2)),
+                                tpc: Number(avg('punt_tpc').toFixed(2))
+                            });
+                        }
+                    });
+                });
+                return grouped;
+            }, [rawData, selectedYears, selectedDayType, isLoaded]);
+
             const tableData = useMemo(() => {
                 if (!isLoaded) return [];
                 return selectedYears.map(year => {
@@ -535,12 +592,12 @@
 
             if (!isLoaded) {
                 return (
-                    <div className="min-h-screen bg-[#F1F5F9] flex items-center justify-center p-6 text-slate-800">
+                    <div className="min-h-screen flex items-center justify-center p-6 text-slate-800">
                         <div className="bg-white p-12 rounded-3xl shadow-xl max-w-lg w-full text-center border border-slate-200">
                             <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <FileSpreadsheet size={48} className="text-[#0d1e2b]" />
                             </div>
-                            <h1 className="text-3xl font-black mb-3 text-[#0d1e2b]">Cargar Datos de Demanda</h1>
+                            <h1 className="text-3xl font-black mb-3 text-[#0d1e2b]">Cargar Datos de Operación</h1>
                             <p className="text-slate-500 mb-8 text-sm leading-relaxed">
                                 Asegúrate de que tu archivo sea formato <strong>CSV (Delimitado por comas)</strong>. Los archivos de Excel (.xlsx) generarán un error en la lectura.
                             </p>
@@ -560,13 +617,24 @@
             }
 
             return (
-                <div className="min-h-screen bg-[#F1F5F9] text-slate-900 pb-12">
+                <div className="min-h-screen text-slate-900 pb-12">
                     <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
                         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-[#0d1e2b] p-2 rounded-lg shadow-md"><Bus className="text-white" size={24} /></div>
+                            <div className="flex items-center gap-4">
+                                {/* Se modificó para buscar "logo.png" para evitar errores con espacios en entornos web */}
+                                {!logoError ? (
+                                    <img 
+                                        src="logo.png" 
+                                        alt="Transmetro" 
+                                        className="h-12 object-contain" 
+                                        onError={() => setLogoError(true)} 
+                                    />
+                                ) : (
+                                    <div className="bg-[#0d1e2b] p-2 rounded-lg shadow-md"><Bus className="text-white" size={24} /></div>
+                                )}
+                                <div className="h-10 w-px bg-slate-200"></div>
                                 <div>
-                                    <h1 className="text-xl font-black text-[#0d1e2b] tracking-tight">Analytics TMO</h1>
+                                    <h1 className="text-xl font-black text-[#0d1e2b] tracking-tight">Indicadores de Gestión</h1>
                                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{rawData.length.toLocaleString('es-CO')} registros analizados</p>
                                 </div>
                             </div>
@@ -624,6 +692,7 @@
 
                         {activeTab === 'dashboard' ? (
                             <div className="grid grid-cols-1 gap-8">
+                                
                                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                                     <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between">
                                         <div>
@@ -640,7 +709,7 @@
                                                 <Tooltip cursor={{fill: '#f8fafc'}} formatter={(value) => [formatNumber(value), "Validaciones Totales"]} />
                                                 <Legend />
                                                 {selectedYears.map((year, idx) => (
-                                                    <Bar key={year} dataKey={year} fill={getYearColor(year, idx)} radius={[4, 4, 0, 0]} barSize={35} name={`Demanda ${year}`} />
+                                                    <Bar key={year} dataKey={year} fill={getYearColor(year, idx)} radius={[4, 4, 0, 0]} barSize={35} name={year} />
                                                 ))}
                                             </BarChart>
                                         </ResponsiveContainer>
@@ -663,7 +732,7 @@
                                                         <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10}} tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val} />
                                                         <Tooltip formatter={(value) => [formatNumber(value), "Promedio Diario"]} />
                                                         <Legend wrapperStyle={{fontSize: '10px'}} />
-                                                        {selectedYears.map((year, idx) => <Line key={year} type="monotone" dataKey={year} name={`Año ${year}`} stroke={getYearColor(year, idx)} strokeWidth={2} dot={{r: 3}} connectNulls />)}
+                                                        {selectedYears.map((year, idx) => <Line key={year} type="monotone" dataKey={year} name={year} stroke={getYearColor(year, idx)} strokeWidth={2} dot={{r: 3}} connectNulls />)}
                                                     </LineChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -678,7 +747,7 @@
                                                         <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10}} tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val} />
                                                         <Tooltip formatter={(value) => [formatNumber(value), "Promedio Diario"]} />
                                                         <Legend wrapperStyle={{fontSize: '10px'}} />
-                                                        {selectedYears.map((year, idx) => <Line key={year} type="monotone" dataKey={year} name={`Año ${year}`} stroke={getYearColor(year, idx)} strokeWidth={2} dot={{r: 3}} connectNulls />)}
+                                                        {selectedYears.map((year, idx) => <Line key={year} type="monotone" dataKey={year} name={year} stroke={getYearColor(year, idx)} strokeWidth={2} dot={{r: 3}} connectNulls />)}
                                                     </LineChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -693,7 +762,7 @@
                                                         <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10}} tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val} />
                                                         <Tooltip formatter={(value) => [formatNumber(value), "Promedio Diario"]} />
                                                         <Legend wrapperStyle={{fontSize: '10px'}} />
-                                                        {selectedYears.map((year, idx) => <Line key={year} type="monotone" dataKey={year} name={`Año ${year}`} stroke={getYearColor(year, idx)} strokeWidth={2} dot={{r: 3}} connectNulls />)}
+                                                        {selectedYears.map((year, idx) => <Line key={year} type="monotone" dataKey={year} name={year} stroke={getYearColor(year, idx)} strokeWidth={2} dot={{r: 3}} connectNulls />)}
                                                     </LineChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -701,10 +770,61 @@
                                     </div>
                                 </div>
 
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                                        <div className="mb-6">
+                                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Check size={20} className="text-[#279A55]" /> Cumplimiento de Despachos por Tipología</h3>
+                                            <p className="text-xs font-medium text-slate-500 ml-7">Promedio del cumplimiento (%). Aplica filtro superior de Tipo de Día.</p>
+                                        </div>
+                                        <div className="h-72">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <ComposedChart data={cumplimientoData}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+                                                    <Tooltip />
+                                                    <Legend />
+                                                    <Bar dataKey="articulado" name="Articulado" fill="#2A4B54" radius={[4, 4, 0, 0]} barSize={15} />
+                                                    <Bar dataKey="padron" name="Padrón" fill="#279A55" radius={[4, 4, 0, 0]} barSize={15} />
+                                                    <Bar dataKey="buseton" name="Busetón" fill="#FDF1B8" radius={[4, 4, 0, 0]} barSize={15} />
+                                                    <Bar dataKey="tpc" name="TPC" fill="#8A7E9A" radius={[4, 4, 0, 0]} barSize={15} />
+                                                </ComposedChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                                        <div className="mb-6">
+                                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Clock size={20} className="text-[#6D213C]" /> Puntualidad por Concesionario</h3>
+                                            <p className="text-xs font-medium text-slate-500 ml-7">Filtrado a partir de Noviembre 2025. Aplica filtro superior de Tipo de Día.</p>
+                                        </div>
+                                        <div className="h-72">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                {puntualidadData.length > 0 ? (
+                                                    <LineChart data={puntualidadData}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                        <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+                                                        <Tooltip />
+                                                        <Legend />
+                                                        <Line type="monotone" dataKey="sistur" name="Sistur" stroke="#2A4B54" strokeWidth={3} dot={false} />
+                                                        <Line type="monotone" dataKey="metrocaribe" name="Metrocaribe" stroke="#279A55" strokeWidth={3} dot={false} />
+                                                        <Line type="monotone" dataKey="tpc" name="TPC" stroke="#6D213C" strokeWidth={3} dot={false} />
+                                                    </LineChart>
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center text-slate-400 font-medium text-sm text-center px-4">
+                                                        No hay datos disponibles a partir de Noviembre de 2025 para los años seleccionados.
+                                                    </div>
+                                                )}
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                                     <div className="mb-6">
                                         <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><BarChart2 size={20} className="text-[#2A4B54]" /> Histórico Demanda vs Kms por Componente</h3>
-                                        <p className="text-xs font-medium text-slate-500 ml-7">Demanda promedio de días hábiles (Barras) frente a los Kilómetros totales mensuales (Líneas) separados por componente.</p>
+                                        <p className="text-xs font-medium text-slate-500 ml-7">Demanda y Kilómetros representados como PROMEDIO DIARIO exclusivo de Días Hábiles, separados por componente.</p>
                                     </div>
                                     <div className="h-80">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -715,10 +835,10 @@
                                                 <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
                                                 <Tooltip formatter={(value, name) => [formatNumber(value), name]} />
                                                 <Legend />
-                                                <Bar yAxisId="left" dataKey="demTroncal" name="Dem. Troncal (Día Hábil)" fill={INDICATOR_COLORS.troncal} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
-                                                <Bar yAxisId="left" dataKey="demAli" name="Dem. Alimentación (Día Hábil)" fill={INDICATOR_COLORS.ali} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
-                                                <Line yAxisId="right" type="monotone" dataKey="kmsTroncal" name="Kms Troncal (Total)" stroke={INDICATOR_COLORS.troncal} strokeWidth={3} dot={false} />
-                                                <Line yAxisId="right" type="monotone" dataKey="kmsAli" name="Kms Alimentación (Total)" stroke={INDICATOR_COLORS.ali} strokeWidth={3} dot={false} />
+                                                <Bar yAxisId="left" dataKey="demTroncal" name="Dem. Troncal" fill={INDICATOR_COLORS.troncal} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
+                                                <Bar yAxisId="left" dataKey="demAli" name="Dem. Alimentación" fill={INDICATOR_COLORS.ali} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
+                                                <Line yAxisId="right" type="monotone" dataKey="kmsTroncal" name="Kms Troncal" stroke={INDICATOR_COLORS.troncal} strokeWidth={3} dot={false} />
+                                                <Line yAxisId="right" type="monotone" dataKey="kmsAli" name="Kms Alimentación" stroke={INDICATOR_COLORS.ali} strokeWidth={3} dot={false} />
                                             </ComposedChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -727,8 +847,8 @@
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                                         <div className="mb-6">
-                                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><MapIcon size={20} className="text-[#279A55]" /> Distribución de Carga (% Ali y Troncal)</h3>
-                                            <p className="text-xs font-medium text-slate-500 ml-7">Promedio diario analizado exclusivamente para Días Hábiles</p>
+                                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><MapIcon size={20} className="text-[#279A55]" /> Distribución de demanda por componente</h3>
+                                            <p className="text-xs font-medium text-slate-500 ml-7">Aplica filtro superior de Tipo de Día</p>
                                         </div>
                                         <div className="h-72">
                                             <ResponsiveContainer width="100%" height="100%">
