@@ -5,15 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tablero de Indicadores de Transporte</title>
     
-    <!-- Tailwind CSS para los estilos -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Fuentes de Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     
-    <!-- Babel (Para transpilar JSX en el navegador) -->
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
@@ -69,7 +66,7 @@
         };
 
         const DAY_COLORS = { 'HAB': '#2A4B54', 'SAB': '#9BB7D4', 'DOM': '#3D5A80' };
-        const INDICATOR_COLORS = { ali: '#279A55', troncal: '#2A4B54', articulado: '#2A4B54', padron: '#9BB7D4', buseton: '#9BB7D4', tpc: '#8A7E9A', general: '#3D5A80' };
+        const INDICATOR_COLORS = { ali: '#279A55', troncal: '#2A4B54', articulado: '#2A4B54', padron: '#9BB7D4', buseton: '#059669', tpc: '#8A7E9A', general: '#3D5A80' };
         const MONTHS_ORDER = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
         const parseCSVLine = (text, sep) => {
@@ -488,6 +485,10 @@
                 const grouped = [];
                 [...selectedYears].sort().forEach(y => {
                     MONTHS_ORDER.forEach(m => {
+                        const yearNum = parseInt(y, 10);
+                        // Filtro aplicado: Ignorar datos anteriores a 2023
+                        if (yearNum < 2023) return;
+
                         const matches = rawData.filter(d => d.Año.toString() === y && d.mes === m && (selectedDayType === 'Todos' || d.Tip_dia === selectedDayType));
                         if (matches.length > 0) {
                             const avg = (key) => matches.reduce((acc, curr) => acc + curr[key], 0) / matches.length;
@@ -504,8 +505,7 @@
                 return grouped;
             }, [rawData, selectedYears, selectedDayType, isLoaded]);
 
-            const puntualidadData = useMemo(() => {
-                if (!isLoaded) return [];
+            const getPuntualidadData = (type) => {
                 const grouped = [];
                 [...selectedYears].sort().forEach(y => {
                     MONTHS_ORDER.forEach(m => {
@@ -513,12 +513,12 @@
                         const monthIdx = MONTHS_ORDER.indexOf(m);
                         if (yearNum < 2025 || (yearNum === 2025 && monthIdx < 10)) return;
 
-                        const matches = rawData.filter(d => d.Año.toString() === y && d.mes === m && (selectedDayType === 'Todos' || d.Tip_dia === selectedDayType));
+                        const matches = rawData.filter(d => d.Año.toString() === y && d.mes === m && d.Tip_dia === type);
                         if (matches.length > 0) {
                             const avg = (key) => matches.reduce((acc, curr) => acc + curr[key], 0) / matches.length;
                             
-                            const tpcMatches = matches.filter(d => d.Tip_dia !== 'DOM');
-                            const tpcAvg = tpcMatches.length > 0 ? tpcMatches.reduce((acc, curr) => acc + curr.punt_tpc, 0) / tpcMatches.length : null;
+                            // El TPC se excluye en los días DOM
+                            const tpcAvg = type !== 'DOM' ? avg('punt_tpc') : null;
 
                             grouped.push({
                                 label: `${m.slice(0,3)} '${y.slice(-2)}`,
@@ -530,7 +530,11 @@
                     });
                 });
                 return grouped;
-            }, [rawData, selectedYears, selectedDayType, isLoaded]);
+            };
+
+            const puntualidadHabData = useMemo(() => isLoaded ? getPuntualidadData('HAB') : [], [rawData, selectedYears, isLoaded]);
+            const puntualidadSabData = useMemo(() => isLoaded ? getPuntualidadData('SAB') : [], [rawData, selectedYears, isLoaded]);
+            const puntualidadDomData = useMemo(() => isLoaded ? getPuntualidadData('DOM') : [], [rawData, selectedYears, isLoaded]);
 
             const tableData = useMemo(() => {
                 if (!isLoaded) return [];
@@ -777,53 +781,95 @@
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                                        <div className="mb-6">
-                                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Check size={20} className="text-[#279A55]" /> Cumplimiento de Despachos por Tipología</h3>
-                                            <p className="text-xs font-medium text-slate-500 ml-7">Promedio del cumplimiento (%). Aplica filtro superior de Tipo de Día.</p>
-                                        </div>
-                                        <div className="h-72">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <ComposedChart data={cumplimientoData}>
-                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
-                                                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
-                                                    <Tooltip />
-                                                    <Legend />
-                                                    <Bar dataKey="articulado" name="Articulado" fill="#2A4B54" radius={[4, 4, 0, 0]} barSize={15} />
-                                                    <Bar dataKey="padron" name="Padrón" fill="#279A55" radius={[4, 4, 0, 0]} barSize={15} />
-                                                    <Bar dataKey="buseton" name="Busetón" fill="#9BB7D4" radius={[4, 4, 0, 0]} barSize={15} />
-                                                    <Bar dataKey="tpc" name="TPC" fill="#8A7E9A" radius={[4, 4, 0, 0]} barSize={15} />
-                                                </ComposedChart>
-                                            </ResponsiveContainer>
-                                        </div>
+                                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Check size={20} className="text-[#279A55]" /> Cumplimiento de Despachos por Tipología</h3>
+                                        <p className="text-xs font-medium text-slate-500 ml-7">Promedio del cumplimiento (%). Aplica filtro superior de Tipo de Día.</p>
                                     </div>
+                                    <div className="h-72">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <ComposedChart data={cumplimientoData}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
+                                                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Bar dataKey="articulado" name="Articulado" fill={INDICATOR_COLORS.articulado} radius={[4, 4, 0, 0]} barSize={15} />
+                                                <Bar dataKey="padron" name="Padrón" fill={INDICATOR_COLORS.padron} radius={[4, 4, 0, 0]} barSize={15} />
+                                                <Bar dataKey="buseton" name="Busetón" fill={INDICATOR_COLORS.buseton} radius={[4, 4, 0, 0]} barSize={15} />
+                                                <Bar dataKey="tpc" name="TPC" fill={INDICATOR_COLORS.tpc} radius={[4, 4, 0, 0]} barSize={15} />
+                                            </ComposedChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
 
-                                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                                        <div className="mb-6">
-                                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Clock size={20} className="text-[#6D213C]" /> Puntualidad por Concesionario</h3>
-                                            <p className="text-xs font-medium text-slate-500 ml-7">Filtrado a partir de Noviembre 2025. Aplica filtro superior de Tipo de Día.</p>
+                                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Clock size={20} className="text-[#6D213C]" /> Puntualidad por Concesionario y Tipo de Día</h3>
+                                        <p className="text-xs font-medium text-slate-500 ml-7">Filtrado a partir de Noviembre 2025.</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                            <h4 className="text-sm font-bold text-slate-700 mb-4 text-center">Días Hábiles</h4>
+                                            <div className="h-60">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    {puntualidadHabData.length > 0 ? (
+                                                        <LineChart data={puntualidadHabData} margin={{top: 5, right: 10, left: -20, bottom: 0}}>
+                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
+                                                            <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                            <Tooltip />
+                                                            <Legend wrapperStyle={{fontSize: '10px'}} />
+                                                            <Line type="monotone" dataKey="sistur" name="Sistur" stroke="#2A4B54" strokeWidth={2} dot={false} />
+                                                            <Line type="monotone" dataKey="metrocaribe" name="Metrocaribe" stroke="#279A55" strokeWidth={2} dot={false} />
+                                                            <Line type="monotone" dataKey="tpc" name="TPC" stroke="#6D213C" strokeWidth={2} dot={false} />
+                                                        </LineChart>
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center text-slate-400 font-medium text-sm text-center px-4">Sin datos</div>
+                                                    )}
+                                                </ResponsiveContainer>
+                                            </div>
                                         </div>
-                                        <div className="h-72">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                {puntualidadData.length > 0 ? (
-                                                    <LineChart data={puntualidadData}>
-                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
-                                                        <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
-                                                        <Tooltip />
-                                                        <Legend />
-                                                        <Line type="monotone" dataKey="sistur" name="Sistur" stroke="#2A4B54" strokeWidth={3} dot={false} />
-                                                        <Line type="monotone" dataKey="metrocaribe" name="Metrocaribe" stroke="#279A55" strokeWidth={3} dot={false} />
-                                                        <Line type="monotone" dataKey="tpc" name="TPC" stroke="#6D213C" strokeWidth={3} dot={false} />
-                                                    </LineChart>
-                                                ) : (
-                                                    <div className="h-full w-full flex items-center justify-center text-slate-400 font-medium text-sm text-center px-4">
-                                                        No hay datos disponibles a partir de Noviembre de 2025 para los años seleccionados.
-                                                    </div>
-                                                )}
-                                            </ResponsiveContainer>
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                            <h4 className="text-sm font-bold text-slate-700 mb-4 text-center">Sábados</h4>
+                                            <div className="h-60">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    {puntualidadSabData.length > 0 ? (
+                                                        <LineChart data={puntualidadSabData} margin={{top: 5, right: 10, left: -20, bottom: 0}}>
+                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
+                                                            <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                            <Tooltip />
+                                                            <Legend wrapperStyle={{fontSize: '10px'}} />
+                                                            <Line type="monotone" dataKey="sistur" name="Sistur" stroke="#2A4B54" strokeWidth={2} dot={false} />
+                                                            <Line type="monotone" dataKey="metrocaribe" name="Metrocaribe" stroke="#279A55" strokeWidth={2} dot={false} />
+                                                            <Line type="monotone" dataKey="tpc" name="TPC" stroke="#6D213C" strokeWidth={2} dot={false} />
+                                                        </LineChart>
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center text-slate-400 font-medium text-sm text-center px-4">Sin datos</div>
+                                                    )}
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                            <h4 className="text-sm font-bold text-slate-700 mb-4 text-center">Domingos y Festivos</h4>
+                                            <div className="h-60">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    {puntualidadDomData.length > 0 ? (
+                                                        <LineChart data={puntualidadDomData} margin={{top: 5, right: 10, left: -20, bottom: 0}}>
+                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
+                                                            <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                            <Tooltip />
+                                                            <Legend wrapperStyle={{fontSize: '10px'}} />
+                                                            <Line type="monotone" dataKey="sistur" name="Sistur" stroke="#2A4B54" strokeWidth={2} dot={false} />
+                                                            <Line type="monotone" dataKey="metrocaribe" name="Metrocaribe" stroke="#279A55" strokeWidth={2} dot={false} />
+                                                        </LineChart>
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center text-slate-400 font-medium text-sm text-center px-4">Sin datos</div>
+                                                    )}
+                                                </ResponsiveContainer>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -837,7 +883,7 @@
                                         <ResponsiveContainer width="100%" height="100%">
                                             <ComposedChart data={sistemaTrendData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                 <YAxis yAxisId="left" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
                                                 <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
                                                 <Tooltip formatter={(value, name) => [formatNumber(value), name]} />
@@ -861,7 +907,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={distribucionTrendData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis domain={[0, 100]} axisLine={false} tickLine={false} unit="%" />
                                                     <Tooltip formatter={(value) => [`${value}%`]} />
                                                     <Legend />
@@ -881,7 +927,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={ofertaTrendData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis yAxisId="left" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val} />
                                                     <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} />
                                                     <Tooltip formatter={(value, name) => [formatNumber(value), name]} />
@@ -904,7 +950,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={monthlyTotalsTrendData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis yAxisId="left" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
                                                     <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
                                                     <Tooltip formatter={(value, name) => [formatNumber(value), name]} />
@@ -926,7 +972,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={ipkTrendData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10}} />
                                                     <Tooltip />
                                                     <Legend />
@@ -950,7 +996,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={ipbTipologiasTrendData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis axisLine={false} tickLine={false} />
                                                     <Tooltip />
                                                     <Legend />
@@ -972,7 +1018,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={ipbGeneralTrendData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis axisLine={false} tickLine={false} />
                                                     <Tooltip />
                                                     <Legend />
@@ -993,7 +1039,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={ikbTipologiasTrendData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis axisLine={false} tickLine={false} />
                                                     <Tooltip />
                                                     <Legend />
@@ -1015,7 +1061,7 @@
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={ikbGeneralTrendData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                     <YAxis axisLine={false} tickLine={false} />
                                                     <Tooltip />
                                                     <Legend />
