@@ -147,6 +147,8 @@
                             kms_troncal: headers.findIndex(h => { const clean = h.replace(/[^A-Z0-9]/g, ''); return clean.includes('KMSEJECTRONCAL') || clean.includes('KMSTRONCAL'); }),
                             kms_prog: headers.findIndex(h => h.includes('KMS PROG') || h.includes('KMS_PROG')),
                             flota: headers.findIndex(h => h.includes('FLOTA_EJEC') || h.includes('FLOTA EJEC')),
+                            flota_ali: headers.findIndex(h => { const c = h.replace(/[^A-Z0-9]/g, ''); return c.includes('FLOTAALI'); }),
+                            flota_troncal: headers.findIndex(h => { const c = h.replace(/[^A-Z0-9]/g, ''); return c.includes('FLOTATRO'); }),
                             flota_blanca: headers.findIndex(h => { const c = h.replace(/[^A-Z0-9]/g, ''); return c.includes('FLOTATMEJEC') || c.includes('FLOTABLANCA'); }),
                             flota_azul: headers.findIndex(h => { const c = h.replace(/[^A-Z0-9]/g, ''); return c.includes('FLOTAGASEJEC') || c.includes('FLOTAAZUL'); }),
                             flota_tpc_new: headers.findIndex(h => { const c = h.replace(/[^A-Z0-9]/g, ''); return c.includes('FLOTATPCEJEC'); }),
@@ -193,6 +195,7 @@
                                 IPB_A: getNum(colIdx.ipb_a), IPB_P: getNum(colIdx.ipb_p), IPB_B: getNum(colIdx.ipb_b), IPB_TPC: getNum(colIdx.ipb_tpc), 'IPB SIST': getNum(colIdx.ipb_sist),
                                 IKB_A: getNum(colIdx.ikb_a), IKB_P: getNum(colIdx.ikb_p), IKB_B: getNum(colIdx.ikb_b), IKB_TPC: getNum(colIdx.ikb_tpc), 'IKB SIST': getNum(colIdx.ikb_sist),
                                 KMS_EJEC: getNum(colIdx.kms), KMS_ALI: getNum(colIdx.kms_ali), KMS_TRONCAL: getNum(colIdx.kms_troncal), KMS_PROG: getNum(colIdx.kms_prog), FLOTA_EJEC: getNum(colIdx.flota),
+                                FLOTA_ALI: getNum(colIdx.flota_ali), FLOTA_TRONCAL: getNum(colIdx.flota_troncal),
                                 FLOTA_BLANCA: getNum(colIdx.flota_blanca), FLOTA_AZUL: getNum(colIdx.flota_azul), FLOTA_TPC_NEW: getNum(colIdx.flota_tpc_new),
                                 cumpl_a: getNum(colIdx.cumpl_a), cumpl_p: getNum(colIdx.cumpl_p), cumpl_b: getNum(colIdx.cumpl_b), cumpl_tpc: getNum(colIdx.cumpl_tpc),
                                 punt_sis: getNum(colIdx.punt_sis), punt_met: getNum(colIdx.punt_met), punt_tpc: getNum(colIdx.punt_tpc)
@@ -254,7 +257,7 @@
             const sabData = useMemo(() => getDailyAvg('SAB'), [rawData, selectedYears, isLoaded]);
             const domData = useMemo(() => getDailyAvg('DOM'), [rawData, selectedYears, isLoaded]);
 
-            // Gráfica 3: Cumplimiento de Despachos (Sanado)
+            // Gráfica 3: Cumplimiento de Despachos (Sanado a líneas)
             const cumplimientoData = useMemo(() => buildTimeSeries(activeData, (m, month, year) => {
                 if (parseInt(year, 10) < 2023) return null;
                 const getValidAvg = (key) => {
@@ -283,11 +286,11 @@
             const puntualidadSabData = useMemo(() => getPuntualidadData('SAB'), [rawData, selectedYears, isLoaded]);
             const puntualidadDomData = useMemo(() => getPuntualidadData('DOM'), [rawData, selectedYears, isLoaded]);
 
-            // Gráfica 5: Flota por Tecnología (Barras Apiladas)
+            // Gráfica 5: Flota por Tecnología (Barras Apiladas redondeadas)
             const flotaTecnologiaData = useMemo(() => buildTimeSeries(habOnlyData, m => {
                 const avg = k => m.reduce((a, b) => a + b[k], 0) / m.length;
                 const blanca = avg('FLOTA_BLANCA'), azul = avg('FLOTA_AZUL'), tpc = avg('FLOTA_TPC_NEW');
-                if (blanca || azul || tpc) return { blanca: Number(blanca.toFixed(1)), azul: Number(azul.toFixed(1)), tpc: Number(tpc.toFixed(1)) };
+                if (blanca || azul || tpc) return { blanca: Math.round(blanca), azul: Math.round(azul), tpc: Math.round(tpc) };
                 return null;
             }), [habOnlyData]);
 
@@ -295,7 +298,11 @@
             const sistemaTrendData = useMemo(() => buildTimeSeries(filterByYear(rawData), m => {
                 const habM = m.filter(d => d.Tip_dia === 'HAB');
                 const avg = k => habM.length ? habM.reduce((a, b) => a + b[k], 0) / habM.length : 0;
-                return { kmsAli: Math.round(avg('KMS_ALI')), kmsTroncal: Math.round(avg('KMS_TRONCAL')), demTroncal: Math.round(avg('Demanda_Troncal')), demAli: Math.round(avg('Demanda_Ali')) };
+                return { 
+                    kmsAli: Math.round(avg('KMS_ALI')), kmsTroncal: Math.round(avg('KMS_TRONCAL')), 
+                    demTroncal: Math.round(avg('Demanda_Troncal')), demAli: Math.round(avg('Demanda_Ali')),
+                    flotaTroncal: Math.round(avg('FLOTA_TRONCAL')), flotaAli: Math.round(avg('FLOTA_ALI'))
+                };
             }), [rawData, selectedYears]);
 
             const distribucionTrendData = useMemo(() => buildTimeSeries(activeData, m => {
@@ -487,17 +494,17 @@
                                     <div className="mb-6"><h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Check size={20} className="text-[#279A55]" /> Cumplimiento de Despachos por Tipología</h3><p className="text-xs font-medium text-slate-500 ml-7">Promedio del cumplimiento (%). Aplica filtro superior.</p></div>
                                     <div className="h-72">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <ComposedChart data={cumplimientoData}>
+                                            <LineChart data={cumplimientoData}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
                                                 <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
                                                 <Tooltip />
                                                 <Legend />
-                                                <Bar dataKey="articulado" name="Articulado" fill={INDICATOR_COLORS.articulado} radius={[4, 4, 0, 0]} barSize={15} />
-                                                <Bar dataKey="padron" name="Padrón" fill={INDICATOR_COLORS.padron} radius={[4, 4, 0, 0]} barSize={15} />
-                                                <Bar dataKey="buseton" name="Busetón" fill={INDICATOR_COLORS.buseton} radius={[4, 4, 0, 0]} barSize={15} />
-                                                <Bar dataKey="tpc" name="TPC" fill={INDICATOR_COLORS.tpc} radius={[4, 4, 0, 0]} barSize={15} />
-                                            </ComposedChart>
+                                                <Line type="monotone" dataKey="articulado" name="Articulado" stroke={INDICATOR_COLORS.articulado} strokeWidth={2} dot={false} connectNulls />
+                                                <Line type="monotone" dataKey="padron" name="Padrón" stroke={INDICATOR_COLORS.padron} strokeWidth={2} dot={false} connectNulls />
+                                                <Line type="monotone" dataKey="buseton" name="Busetón" stroke={INDICATOR_COLORS.buseton} strokeWidth={2} dot={false} connectNulls />
+                                                <Line type="monotone" dataKey="tpc" name="TPC" stroke={INDICATOR_COLORS.tpc} strokeWidth={2} dot={false} connectNulls />
+                                            </LineChart>
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
@@ -567,23 +574,45 @@
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                                    <div className="mb-6"><h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><BarChart2 size={20} className="text-[#2A4B54]" /> Demanda vs Kms por Componente</h3><p className="text-xs font-medium text-slate-500 ml-7">Promedio Diario Hábil.</p></div>
-                                    <div className="h-80">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <ComposedChart data={sistemaTrendData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
-                                                <YAxis yAxisId="left" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
-                                                <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
-                                                <Tooltip formatter={(val, name) => [formatNumber(val), name]} />
-                                                <Legend />
-                                                <Bar yAxisId="left" dataKey="demTroncal" name="Dem. Troncal" fill={INDICATOR_COLORS.troncal} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
-                                                <Bar yAxisId="left" dataKey="demAli" name="Dem. Alimentación" fill={INDICATOR_COLORS.ali} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
-                                                <Line yAxisId="right" type="monotone" dataKey="kmsTroncal" name="Kms Troncal" stroke={INDICATOR_COLORS.troncal} strokeWidth={3} dot={false} />
-                                                <Line yAxisId="right" type="monotone" dataKey="kmsAli" name="Kms Alimentación" stroke={INDICATOR_COLORS.ali} strokeWidth={3} dot={false} />
-                                            </ComposedChart>
-                                        </ResponsiveContainer>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                                        <div className="mb-6"><h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><BarChart2 size={20} className="text-[#2A4B54]" /> Demanda vs Kms por Componente</h3><p className="text-xs font-medium text-slate-500 ml-7">Promedio Diario Hábil.</p></div>
+                                        <div className="h-80">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <ComposedChart data={sistemaTrendData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
+                                                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
+                                                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
+                                                    <Tooltip formatter={(val, name) => [formatNumber(val), name]} />
+                                                    <Legend />
+                                                    <Bar yAxisId="left" dataKey="demTroncal" name="Dem. Troncal" fill={INDICATOR_COLORS.troncal} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
+                                                    <Bar yAxisId="left" dataKey="demAli" name="Dem. Alimentación" fill={INDICATOR_COLORS.ali} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
+                                                    <Line yAxisId="right" type="monotone" dataKey="kmsTroncal" name="Kms Troncal" stroke={INDICATOR_COLORS.troncal} strokeWidth={3} dot={false} />
+                                                    <Line yAxisId="right" type="monotone" dataKey="kmsAli" name="Kms Alimentación" stroke={INDICATOR_COLORS.ali} strokeWidth={3} dot={false} />
+                                                </ComposedChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                                        <div className="mb-6"><h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Bus size={20} className="text-[#279A55]" /> Flota vs Kms por Componente</h3><p className="text-xs font-medium text-slate-500 ml-7">Promedio Diario Hábil.</p></div>
+                                        <div className="h-80">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <ComposedChart data={sistemaTrendData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={50} />
+                                                    <YAxis yAxisId="left" axisLine={false} tickLine={false} />
+                                                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val)} />
+                                                    <Tooltip formatter={(val, name) => [formatNumber(val), name]} />
+                                                    <Legend />
+                                                    <Bar yAxisId="left" dataKey="flotaTroncal" name="Flota Troncal" fill={INDICATOR_COLORS.troncal} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
+                                                    <Bar yAxisId="left" dataKey="flotaAli" name="Flota Alimentación" fill={INDICATOR_COLORS.ali} fillOpacity={0.6} radius={[4, 4, 0, 0]} barSize={25} />
+                                                    <Line yAxisId="right" type="monotone" dataKey="kmsTroncal" name="Kms Troncal" stroke={INDICATOR_COLORS.troncal} strokeWidth={3} dot={false} />
+                                                    <Line yAxisId="right" type="monotone" dataKey="kmsAli" name="Kms Alimentación" stroke={INDICATOR_COLORS.ali} strokeWidth={3} dot={false} />
+                                                </ComposedChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
                                 </div>
 
